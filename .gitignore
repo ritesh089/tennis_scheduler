@@ -1,0 +1,32 @@
+# Cargo build output
+/target/
+
+# If you're developing a library you might consider checking in Cargo.lock,
+# but for applications it's generally recommended to commit it.
+# Uncomment the next line if you want to ignore Cargo.lock
+# Cargo.lock
+
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment files (containing sensitive information)
+.env
+.env.*
+
+# Docker override file (if used)
+docker-compose.override.yml
+
+# Log files
+*.log
+
+# Temporary files
+*.swp
+*~

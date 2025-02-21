@@ -1,0 +1,55 @@
+// This file is usually generated automatically by Diesel.
+table! {
+    player (player_id) {
+        player_id -> Int4,
+        name -> Varchar,
+        email -> Varchar,
+        password -> Varchar,
+        skill_level -> Nullable<Varchar>,
+        created_at -> Timestamp,
+    }
+}
+
+table! {
+    league (league_id) {
+        league_id -> Int4,
+        league_name -> Varchar,
+        description -> Nullable<Text>,
+        created_at -> Timestamp,
+    }
+}
+
+table! {
+    appointment (appointment_id) {
+        appointment_id -> Int4,
+        requester_id -> Int4,
+        opponent_id -> Int4,
+        league_id -> Nullable<Int4>,
+        start_time -> Timestamp,
+        end_time -> Timestamp,
+        status -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+table! {
+    player_league (player_id, league_id) {
+        player_id -> Int4,
+        league_id -> Int4,
+        joined_at -> Timestamp,
+    }
+}
+
+joinable!(appointment -> player (requester_id));
+joinable!(appointment -> player (opponent_id));
+joinable!(appointment -> league (league_id));
+joinable!(player_league -> player (player_id));
+joinable!(player_league -> league (league_id));
+
+allow_tables_to_appear_in_same_query!(
+    player,
+    league,
+    appointment,
+    player_league,
+);

@@ -1,0 +1,318 @@
+openapi: 3.0.0
+info:
+  title: Tennis Match Scheduling API
+  description: API for scheduling tennis matches, managing players, match requests, and leagues.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3000/api
+paths:
+  /register:
+    post:
+      summary: Create a new player account.
+      operationId: registerPlayer
+      requestBody:
+        description: Player registration data.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                skill_level:
+                  type: string
+              required:
+                - name
+                - email
+                - password
+      responses:
+        '201':
+          description: Player created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '400':
+          description: Invalid input.
+  /login:
+    post:
+      summary: Authenticate a player and obtain a token.
+      operationId: loginPlayer
+      requestBody:
+        description: Player login credentials.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Authenticated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Unauthorized.
+  /players/{player_id}/calendar:
+    get:
+      summary: Retrieve a player's calendar events.
+      operationId: getPlayerCalendar
+      parameters:
+        - in: path
+          name: player_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A list of calendar events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '404':
+          description: Player not found.
+  /appointments:
+    post:
+      summary: Create a new match appointment (request a match).
+      operationId: createAppointment
+      requestBody:
+        description: Appointment details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requester_id:
+                  type: integer
+                opponent_id:
+                  type: integer
+                start_time:
+                  type: string
+                  format: date-time
+                end_time:
+                  type: string
+                  format: date-time
+                league_id:
+                  type: integer
+              required:
+                - requester_id
+                - opponent_id
+                - start_time
+                - end_time
+      responses:
+        '201':
+          description: Appointment created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Invalid input.
+  /appointments/{appointment_id}:
+    put:
+      summary: Update an appointment (e.g., confirm or decline).
+      operationId: updateAppointment
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: Update appointment status.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, canceled, declined]
+              required:
+                - status
+      responses:
+        '200':
+          description: Appointment updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Invalid input.
+        '404':
+          description: Appointment not found.
+    delete:
+      summary: Cancel an appointment.
+      operationId: cancelAppointment
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment canceled successfully.
+        '404':
+          description: Appointment not found.
+  /leagues:
+    post:
+      summary: Create a new league.
+      operationId: createLeague
+      requestBody:
+        description: League details.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                league_name:
+                  type: string
+                description:
+                  type: string
+              required:
+                - league_name
+      responses:
+        '201':
+          description: League created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+        '400':
+          description: Invalid input.
+  /leagues/{league_id}/join:
+    post:
+      summary: Join a league.
+      operationId: joinLeague
+      parameters:
+        - in: path
+          name: league_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: Player joining the league.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                player_id:
+                  type: integer
+              required:
+                - player_id
+      responses:
+        '200':
+          description: Joined league successfully.
+        '400':
+          description: Invalid input.
+        '404':
+          description: League or player not found.
+  /leagues/{league_id}/leave:
+    delete:
+      summary: Leave a league.
+      operationId: leaveLeague
+      parameters:
+        - in: path
+          name: league_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: Player leaving the league.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                player_id:
+                  type: integer
+              required:
+                - player_id
+      responses:
+        '200':
+          description: Left league successfully.
+        '400':
+          description: Invalid input.
+        '404':
+          description: League or player not found.
+components:
+  schemas:
+    Player:
+      type: object
+      properties:
+        player_id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        skill_level:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    Appointment:
+      type: object
+      properties:
+        appointment_id:
+          type: integer
+        requester_id:
+          type: integer
+        opponent_id:
+          type: integer
+        league_id:
+          type: integer
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    League:
+      type: object
+      properties:
+        league_id:
+          type: integer
+        league_name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time

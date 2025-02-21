@@ -1,0 +1,17 @@
+[package]
+name = "tennis_scheduler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenv = "0.15"
+actix-rt = "2"
+diesel = { version = "2.0.3", features = ["postgres", "r2d2", "chrono"] }
+r2d2 = "0.8"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+derive_more = "0.99.17"
+paperclip = { version = "0.8", features = ["actix4"] }
