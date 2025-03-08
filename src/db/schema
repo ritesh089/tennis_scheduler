@@ -14,7 +14,9 @@ table! {
     league (league_id) {
         league_id -> Int4,
         league_name -> Varchar,
+        skill_level -> Nullable<Varchar>,
         description -> Nullable<Text>,
+        created_by -> Varchar,
         created_at -> Timestamp,
     }
 }

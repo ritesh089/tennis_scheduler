@@ -1,27 +1,34 @@
 -- Create the Player table to store player details.
-CREATE TABLE IF NOT EXISTS player (
+CREATE TABLE IF NOT EXISTS players (
     player_id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL, -- store hashed passwords
     skill_level VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create the League table for league information.
-CREATE TABLE IF NOT EXISTS league (
-    league_id SERIAL PRIMARY KEY,
-    league_name VARCHAR(100) NOT NULL,
+-- If creating the league table from scratch:
+
+CREATE TABLE IF NOT EXISTS leagues (
+    league_id SERIAL ,
+    league_name VARCHAR(50) PRIMARY KEY NOT NULL UNIQUE,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    skill_level VARCHAR(50),
+    created_by VARCHAR(50) NOT NULL,  -- References the player who created the league
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_creator
+        FOREIGN KEY (created_by)
+            REFERENCES players(name)
+            ON DELETE CASCADE
 );
 
 -- Create the Appointment table to store match requests and scheduling.
 CREATE TABLE IF NOT EXISTS appointment (
     appointment_id SERIAL PRIMARY KEY,
-    requester_id INT NOT NULL,
-    opponent_id INT NOT NULL,
-    league_id INT, -- this is nullable for non-league matches
+    requester_id VARCHAR(50) NOT NULL,
+    opponent_id VARCHAR(50) NOT NULL,
+    league_id VARCHAR(50), -- this is nullable for non-league matches
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     status VARCHAR(20) DEFAULT 'pending', -- possible values: pending, confirmed, canceled, declined
@@ -29,30 +36,34 @@ CREATE TABLE IF NOT EXISTS appointment (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_requester
         FOREIGN KEY(requester_id)
-            REFERENCES player(player_id)
+            REFERENCES players(name)
             ON DELETE CASCADE,
     CONSTRAINT fk_opponent
         FOREIGN KEY(opponent_id)
-            REFERENCES player(player_id)
+            REFERENCES players(name)
             ON DELETE CASCADE,
     CONSTRAINT fk_league
         FOREIGN KEY(league_id)
-            REFERENCES league(league_id)
+            REFERENCES leagues(league_name)
             ON DELETE SET NULL
 );
 
--- Create a join table for the many-to-many relationship between players and leagues.
-CREATE TABLE IF NOT EXISTS player_league (
-    player_id INT NOT NULL,
-    league_id INT NOT NULL,
+--- If creating the join table from scratch:
+CREATE TABLE IF NOT EXISTS player_leagues (
+    player_id VARCHAR(50) NOT NULL,
+    league_id VARCHAR(50) NOT NULL,
+    role VARCHAR(20) DEFAULT 'player',  -- Role can be 'player' or 'admin'
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (player_id, league_id),
+    singles_ranking INT,
+    doubles_ranking INT,
     CONSTRAINT fk_player
         FOREIGN KEY(player_id)
-            REFERENCES player(player_id)
+            REFERENCES players(name)
             ON DELETE CASCADE,
     CONSTRAINT fk_league_join
         FOREIGN KEY(league_id)
-            REFERENCES league(league_id)
+            REFERENCES leagues(league_name)
             ON DELETE CASCADE
 );
+
