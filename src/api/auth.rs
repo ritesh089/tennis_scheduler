@@ -11,6 +11,8 @@ pub struct RegisterInput {
     pub email: String,
     pub password: String,
     pub skill_level: Option<String>,
+    pub role: Option<String>,
+    pub phone: Option<String>,
 }
 
 #[api_v2_operation]
@@ -34,6 +36,8 @@ pub async fn register(
             email.eq(&item.email), 
             password.eq(&hashed_password),
             skill_level.eq(&item.skill_level),
+            role.eq(&item.role),
+            phone.eq(&item.phone),
             created_at.eq(Local::now().naive_local())
         ))
         .execute(conn)

@@ -28,6 +28,8 @@ diesel::table! {
         email -> Varchar,
         password -> Varchar,
         skill_level -> Nullable<Varchar>,
+        role -> Nullable<Varchar>,
+        phone -> Nullable<Varchar>,
         created_at -> Timestamp,
     }
 }
@@ -73,6 +75,7 @@ diesel::table! {
         league_id -> Int4,
         league_name -> Varchar,
         description -> Nullable<Text>,
+        is_public -> Bool,
         skill_level -> Nullable<Varchar>,
         created_by -> Varchar,
         created_at -> Timestamp,
@@ -89,3 +92,11 @@ diesel::table! {
         joined_at -> Timestamp,
     }
 }
+
+diesel::allow_tables_to_appear_in_same_query!(
+    players,
+    player_leagues,
+    leagues,
+    matches,
+    appointments,
+);

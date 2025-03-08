@@ -1,6 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use crate::db::{models::{League, NewLeague}, schema::players::email, DbPool};
+use paperclip::actix::*;
+use crate::db::{models::{League, NewLeague}, DbPool};
 use chrono::Local;
 use diesel::prelude::*;
 
@@ -14,10 +15,9 @@ use crate::db::schema::player_leagues::dsl::{
     role, 
     joined_at,
     league_id
+    
 };
-
-
-
+use crate::db::models::Player;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateLeagueInput {
@@ -25,6 +25,7 @@ pub struct CreateLeagueInput {
     pub description: Option<String>,
     pub skill_level: Option<String>,
     pub created_by: String,
+    pub is_public: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -64,6 +65,7 @@ pub async fn create_league(
             description: item.description.clone(),
             skill_level: item.skill_level.clone(),
             created_by: item.created_by.to_string(),
+            is_public: item.is_public.unwrap_or(true),
             created_at: Local::now().naive_local(),
         };
 
@@ -77,6 +79,7 @@ pub async fn create_league(
                 player_id.eq(&item.created_by),
                 league_id.eq(&league_result.league_name.to_string()),
                 role.eq("admin"),
+           
                 joined_at.eq(Local::now().naive_local())
             ))
             .execute(conn)?;
@@ -137,7 +140,8 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
         web::scope("/leagues")
             .route("", web::post().to(create_league))
             .route("/{league_id}/join", web::post().to(join_league))
-            .route("/{league_id}/leave", web::delete().to(leave_league)),
+            .route("/{league_id}/leave", web::delete().to(leave_league))
+            .route("/{league_id}/players", web::get().to(get_league_players)),
     );
 }
 
@@ -169,25 +173,6 @@ pub async fn search_leagues(
 }
 
 
-// Assume you have a Member struct that combines player info and role.
-#[derive(Serialize)]
-pub struct LeagueMember {
-    pub player_id: i32,
-    pub name: String,
-    pub role: String,
-}
-
-pub async fn get_league_members(path: web::Path<i32>) -> impl Responder {
-    let _league_id = path.into_inner();
-    // Query the database to retrieve members for the league.
-    // For demonstration, we return dummy members.
-    let members = vec![
-        LeagueMember { player_id: 1, name: "Alice".into(), role: "admin".into() },
-        LeagueMember { player_id: 2, name: "Bob".into(), role: "player".into() },
-    ];
-    HttpResponse::Ok().json(members)
-}
-
 #[derive(Debug, Deserialize)]
 pub struct UpdateRoleInput {
     pub role: String, // e.g., "admin" or "player"
@@ -213,6 +198,45 @@ pub async fn update_member_role(
     }
     
     HttpResponse::Ok().json(format!("Updated player {} in league {} to role {}", player_id_val, league_id_val, item.role))
+}
+
+#[derive(Serialize, Queryable, Debug)]
+pub struct LeaguePlayerInfo {
+    pub name: String,
+    pub email: String,
+    pub skill_level: Option<String>,
+    pub role: String,
+}
+
+#[api_v2_operation]
+pub async fn get_league_players(
+    path: web::Path<String>,
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let league_id_val = path.into_inner();
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    use crate::db::schema::{players, player_leagues};
+    
+    match players::table
+        .inner_join(player_leagues::table.on(
+            players::name.eq(player_leagues::player_id)
+            .and(player_leagues::league_id.eq(league_id_val))
+        ))
+        .select((
+            players::name,
+            players::email,
+            players::skill_level,
+            player_leagues::role,
+        ))
+        .load::<LeaguePlayerInfo>(conn)
+    {
+        Ok(players) => HttpResponse::Ok().json(players),
+        Err(error) => {
+            println!("Failed to fetch league players: {:?}", error);
+            HttpResponse::InternalServerError().json("Failed to fetch league players")
+        }
+    }
 }
 
 

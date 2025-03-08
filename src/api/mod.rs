@@ -20,8 +20,8 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
                         web::resource("/{league_id}/join").route(web::post().to(leagues::join_league))
                     )
                     .service(
-                        web::resource("/{league_id}/members")
-                            .route(web::get().to(leagues::get_league_members))
+                        web::resource("/{league_id}/players")
+                            .route(web::get().to(leagues::get_league_players))
                     )
                     .service(
                         web::resource("/{league_id}/members/{player_id}")

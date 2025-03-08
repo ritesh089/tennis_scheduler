@@ -10,6 +10,8 @@ pub struct Player {
     pub email: String,
     pub password: String,
     pub skill_level: Option<String>,
+    pub role: Option<String>,
+    pub phone: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -19,6 +21,7 @@ pub struct League {
     pub league_id: i32,
     pub league_name: String,
     pub skill_level: Option<String>,
+    pub is_public: bool,
     pub description: Option<String>,
     pub created_by: String,
     pub created_at: chrono::NaiveDateTime,
@@ -30,7 +33,8 @@ pub struct LeaguePlayer {
     pub player_id: i32,
     pub singles_ranking: Option<i32>,
     pub doubles_ranking: Option<i32>,
-    pub role: String, // "player" or "admin"
+    pub role: String,  // app role: "admin", "user", etc.
+    pub league_role: String,  // league role: "manager" or "player"
     pub joined_at: chrono::NaiveDateTime,
 }
 
@@ -54,6 +58,7 @@ pub struct NewLeague {
     pub description: Option<String>,
     pub skill_level: Option<String>,
     pub created_by: String,
+    pub is_public: bool,
     pub created_at: chrono::NaiveDateTime,
 }
 

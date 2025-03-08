@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS players (
     player_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(100) DEFAULT NULL,
+    role VARCHAR(50) DEFAULT 'player',
     password VARCHAR(255) NOT NULL, -- store hashed passwords
     skill_level VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
