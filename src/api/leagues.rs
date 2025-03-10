@@ -291,20 +291,62 @@ pub async fn create_join_request(
 
     use crate::db::schema::league_join_requests::dsl::*;
 
-    let new_request = NewLeagueJoinRequest {
-        league_id: league_id_val,
-        player_id: item.player_id.clone(),
-        description: item.description.clone(),
-    };
+    // First check if a rejected request already exists
+    let existing_request = league_join_requests
+        .filter(league_id.eq(&league_id_val))
+        .filter(player_id.eq(&item.player_id))
+        .filter(status.eq("rejected"))
+        .first::<LeagueJoinRequest>(conn)
+        .optional();
 
-    match diesel::insert_into(league_join_requests)
-        .values(&new_request)
-        .execute(conn)
-    {
-        Ok(_) => HttpResponse::Created().json("Join request created successfully"),
+    match existing_request {
+        Ok(Some(request)) => {
+            // Update the existing rejected request
+            let updated_description = match (request.description, &item.description) {
+                (Some(old_desc), Some(new_desc)) => Some(format!("{}\n\nNew request: {}", old_desc, new_desc)),
+                (None, Some(new_desc)) => Some(new_desc.clone()),
+                (Some(old_desc), None) => Some(old_desc),
+                (None, None) => None,
+            };
+
+            match diesel::update(league_join_requests.find(request.request_id))
+                .set((
+                    status.eq("pending"),
+                    description.eq(updated_description),
+                    notes.eq::<Option<String>>(None) // Clear any previous notes
+                ))
+                .execute(conn)
+            {
+                Ok(_) => HttpResponse::Ok().json("Join request resubmitted successfully"),
+                Err(error) => {
+                    println!("Failed to update existing join request: {:?}", error);
+                    HttpResponse::InternalServerError().json("Failed to resubmit join request")
+                }
+            }
+        },
+        Ok(None) => {
+            // No existing rejected request, create a new one
+            let new_request = NewLeagueJoinRequest {
+                league_id: league_id_val,
+                player_id: item.player_id.clone(),
+                description: item.description.clone(),
+                notes: None,
+            };
+
+            match diesel::insert_into(league_join_requests)
+                .values(&new_request)
+                .execute(conn)
+            {
+                Ok(_) => HttpResponse::Created().json("Join request created successfully"),
+                Err(error) => {
+                    println!("Failed to create join request: {:?}", error);
+                    HttpResponse::InternalServerError().json("Failed to create join request")
+                }
+            }
+        },
         Err(error) => {
-            println!("Failed to create join request: {:?}", error);
-            HttpResponse::InternalServerError().json("Failed to create join request")
+            println!("Error checking for existing join request: {:?}", error);
+            HttpResponse::InternalServerError().json("Failed to process join request")
         }
     }
 }
@@ -334,6 +376,7 @@ pub async fn get_league_join_requests(
 #[derive(Debug, Deserialize)]
 pub struct UpdateJoinRequestInput {
     pub status: String,  // "accepted" or "rejected"
+    pub notes: Option<String>,
 }
 
 
@@ -350,7 +393,10 @@ pub async fn update_join_request_status(
     match diesel::update(league_join_requests)
         .filter(league_id.eq(league_id_val))
         .filter(request_id.eq(request_id_val))
-        .set(status.eq(&item.status))
+        .set((
+            status.eq(&item.status),
+            notes.eq(&item.notes)
+        ))
         .execute(conn)
     {
         Ok(_) => HttpResponse::Ok().json("Join request status updated successfully"),

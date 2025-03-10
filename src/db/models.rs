@@ -92,6 +92,7 @@ pub struct LeagueJoinRequest {
     pub description: Option<String>,
     pub status: String,
     pub created_at: NaiveDateTime,
+    pub notes: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -100,6 +101,7 @@ pub struct NewLeagueJoinRequest {
     pub league_id: String,
     pub player_id: String,
     pub description: Option<String>,
+    pub notes: Option<String>,
 }
 
 

@@ -101,6 +101,7 @@ diesel::table! {
         description -> Nullable<Text>,
         status -> Varchar,
         created_at -> Timestamp,
+        notes -> Nullable<Text>,
     }
 }
 
