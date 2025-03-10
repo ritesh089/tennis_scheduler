@@ -84,6 +84,24 @@ pub struct Match {
     pub updated_at: chrono::NaiveDateTime,
 }
 
+#[derive(Queryable, Serialize, Deserialize)]
+pub struct LeagueJoinRequest {
+    pub request_id: i32,
+    pub league_id: String,
+    pub player_id: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::db::schema::league_join_requests)]
+pub struct NewLeagueJoinRequest {
+    pub league_id: String,
+    pub player_id: String,
+    pub description: Option<String>,
+}
+
 
 
 

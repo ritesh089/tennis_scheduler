@@ -93,10 +93,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    league_join_requests (request_id) {
+        request_id -> Int4,
+        league_id -> Varchar,
+        player_id -> Varchar,
+        description -> Nullable<Text>,
+        status -> Varchar,
+        created_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     players,
     player_leagues,
     leagues,
     matches,
     appointments,
+    league_join_requests,
 );

@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use paperclip::actix::*;
-use crate::db::{models::{League, NewLeague}, DbPool};
+use crate::db::{models::{League, NewLeague, LeagueJoinRequest, NewLeagueJoinRequest}, DbPool};
 use chrono::Local;
 use diesel::prelude::*;
 
@@ -50,6 +50,24 @@ pub async fn get_league_by_id(
         Err(_) => HttpResponse::NotFound().json("League not found")
     }
 }
+
+pub async fn get_league_by_name(
+    path: web::Path<String>,
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let league_name_val = path.into_inner();
+    
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    match all_leagues
+        .filter(league_name.eq(league_name_val))
+        .first::<League>(conn) 
+    {
+        Ok(league) => HttpResponse::Ok().json(league),
+        Err(_) => HttpResponse::NotFound().json("League not found")
+    }
+}
+
 
 pub async fn create_league(
     item: web::Json<CreateLeagueInput>,
@@ -135,15 +153,7 @@ pub async fn leave_league(
     }
 }
 
-pub fn init_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/leagues")
-            .route("", web::post().to(create_league))
-            .route("/{league_id}/join", web::post().to(join_league))
-            .route("/{league_id}/leave", web::delete().to(leave_league))
-            .route("/{league_id}/players", web::get().to(get_league_players)),
-    );
-}
+
 
 #[derive(Debug, Deserialize)]
 pub struct LeagueQuery {
@@ -238,5 +248,119 @@ pub async fn get_league_players(
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct PlayerLeagueRole {
+    pub role: String,
+}
+
+#[api_v2_operation]
+pub async fn get_player_league_role(
+    path: web::Path<(String, String)>,  // (league_id, player_name)
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let (league_id_val, player_name) = path.into_inner();
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    use crate::db::schema::player_leagues::dsl::*;
+    
+    match player_leagues
+        .filter(league_id.eq(league_id_val))
+        .filter(player_id.eq(player_name))
+        .select(role)
+        .first::<String>(conn)
+    {
+        Ok(player_role) => HttpResponse::Ok().json(PlayerLeagueRole { role: player_role }),
+        Err(_) => HttpResponse::NotFound().json("Player not found in this league")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JoinRequestInput {
+    pub player_id: String,
+    pub description: Option<String>,
+}
+
+pub async fn create_join_request(
+    path: web::Path<String>,
+    item: web::Json<JoinRequestInput>,
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let league_id_val = path.into_inner();
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    use crate::db::schema::league_join_requests::dsl::*;
+
+    let new_request = NewLeagueJoinRequest {
+        league_id: league_id_val,
+        player_id: item.player_id.clone(),
+        description: item.description.clone(),
+    };
+
+    match diesel::insert_into(league_join_requests)
+        .values(&new_request)
+        .execute(conn)
+    {
+        Ok(_) => HttpResponse::Created().json("Join request created successfully"),
+        Err(error) => {
+            println!("Failed to create join request: {:?}", error);
+            HttpResponse::InternalServerError().json("Failed to create join request")
+        }
+    }
+}
+
+pub async fn get_league_join_requests(
+    path: web::Path<String>,
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let league_id_val = path.into_inner();
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    use crate::db::schema::league_join_requests::dsl::*;
+
+    match league_join_requests
+        .filter(league_id.eq(league_id_val))
+        .filter(status.eq("pending"))
+        .load::<LeagueJoinRequest>(conn)
+    {
+        Ok(requests) => HttpResponse::Ok().json(requests),
+        Err(error) => {
+            println!("Failed to fetch join requests: {:?}", error);
+            HttpResponse::InternalServerError().json("Failed to fetch join requests")
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateJoinRequestInput {
+    pub status: String,  // "accepted" or "rejected"
+}
+
+
+pub async fn update_join_request_status(
+    path: web::Path<(String, i32)>,  // (league_id, request_id)
+    item: web::Json<UpdateJoinRequestInput>,
+    pool: web::Data<DbPool>
+) -> impl Responder {
+    let (league_id_val, request_id_val) = path.into_inner();
+    let conn = &mut pool.get().expect("Failed to get DB connection");
+
+    use crate::db::schema::league_join_requests::dsl::*;
+
+    match diesel::update(league_join_requests)
+        .filter(league_id.eq(league_id_val))
+        .filter(request_id.eq(request_id_val))
+        .set(status.eq(&item.status))
+        .execute(conn)
+    {
+        Ok(_) => HttpResponse::Ok().json("Join request status updated successfully"),
+        Err(error) => {
+            println!("Failed to update join request status: {:?}", error);
+            HttpResponse::InternalServerError().json("Failed to update join request status")
+        }
+    }
+}
+
+
 
 
