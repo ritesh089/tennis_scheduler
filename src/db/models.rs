@@ -63,25 +63,55 @@ pub struct NewLeague {
 }
 
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Insertable, Serialize, Deserialize, Clone, Selectable)]
+#[diesel(table_name = crate::db::schema::matches)]
 pub struct Match {
-    pub match_id: i32,
-    pub league_id: i32,
+    pub id: i32,
     pub match_type: String,
-    pub match_scheduled_time: Option<chrono::NaiveDateTime>,
-    pub match_actual_time: Option<chrono::NaiveDateTime>,
-    pub match_location: Option<String>,
+    pub player1_id: Option<String>,
+    pub player2_id: Option<String>,
+    pub league_id: String,
+    pub team1_player1_id: Option<String>,
+    pub team1_player2_id: Option<String>,
+    pub team2_player1_id: Option<String>,
+    pub team2_player2_id: Option<String>,
+    pub datetime: String,
+    pub location: String,
+    pub score: Option<String>,
+    pub winner_id: Option<String>,
     pub status: String,
-    pub match_result: Option<String>,
-    pub player1_id: Option<i32>,
-    pub player2_id: Option<i32>,
-    pub team1_player1_id: Option<i32>,
-    pub team1_player2_id: Option<i32>,
-    pub team2_player1_id: Option<i32>,
-    pub team2_player2_id: Option<i32>,
-    pub winner_id: Option<i32>,
+    pub notes: Option<String>,
     pub created_at: chrono::NaiveDateTime,
-    pub updated_at: chrono::NaiveDateTime,
+}
+
+#[derive(Insertable, Deserialize)]
+#[diesel(table_name = crate::db::schema::matches)]
+pub struct NewMatch {
+    pub match_type: String,
+    pub player1_id: Option<String>,
+    pub player2_id: Option<String>,
+    pub league_id: String,
+    pub team1_player1_id: Option<String>,
+    pub team1_player2_id: Option<String>,
+    pub team2_player1_id: Option<String>,
+    pub team2_player2_id: Option<String>,
+    pub datetime: String,
+    pub location: String,
+    pub score: Option<String>,
+    pub winner_id: Option<String>,
+    pub status: String,
+    pub notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateMatchInput {
+    pub date: Option<String>,
+    pub time: Option<String>,
+    pub location: Option<String>,
+    pub score: Option<String>,
+    pub winner_id: Option<i32>,
+    pub status: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Queryable, Serialize, Deserialize)]

@@ -35,24 +35,23 @@ diesel::table! {
 }
 
 diesel::table! {
-    matches (match_id) {
-        match_id -> Int4,
-        league_id -> Int4,
-        match_type -> Varchar,
-        match_scheduled_time -> Nullable<Timestamp>,
-        match_actual_time -> Nullable<Timestamp>,
-        match_location -> Nullable<Varchar>,
-        status -> Nullable<Varchar>,
-        match_result -> Nullable<Varchar>,
-        player1_id -> Nullable<Int4>,
-        player2_id -> Nullable<Int4>,
-        team1_player1_id -> Nullable<Int4>,
-        team1_player2_id -> Nullable<Int4>,
-        team2_player1_id -> Nullable<Int4>,
-        team2_player2_id -> Nullable<Int4>,
-        winner_id -> Nullable<Int4>,
+    matches (id) {
+        id -> Int4,
+        match_type -> VarChar,
+        player1_id -> Nullable<Text>,
+        player2_id -> Nullable< Text>,
+        league_id -> Text,
+        team1_player1_id -> Nullable<Text>,
+        team1_player2_id -> Nullable<Text>,
+        team2_player1_id -> Nullable<Text>,
+        team2_player2_id -> Nullable<Text>,
+        datetime -> Text,
+        location -> Text,
+        score -> Nullable<Text>,
+        winner_id -> Nullable<Text>,
+        status -> Text,
+        notes -> Nullable<Text>,
         created_at -> Timestamp,
-        updated_at -> Timestamp,
     }
 }
 

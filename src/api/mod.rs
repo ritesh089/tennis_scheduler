@@ -4,6 +4,7 @@ mod auth;
 mod appointments;
 mod leagues;
 mod players;
+mod matches;
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -33,5 +34,6 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
             // Other endpoints...
             .configure(players::init_routes)
             .configure(appointments::init_routes)
+            .configure(matches::init_routes)
     );
 }
