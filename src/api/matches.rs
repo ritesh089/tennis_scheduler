@@ -292,14 +292,42 @@ pub async fn get_matches(
     pool: web::Data<DbPool>,
     query_params: web::Query<MatchQuery>,
 ) -> Result<impl Responder, AppError> {
-    // For now, just return an empty array
-    // In a real implementation, you would query the database
+    let pool_clone = pool.clone();
+    let league_id = query_params.league_id.clone();
+    let status = query_params.status.clone();
     
-    let matches_vec: Vec<serde_json::Value> = Vec::new();
+    // Use web::block to run the database query in a blocking thread
+    let matches_result = web::block(move || -> Result<Vec<Match>, AppError> {
+        let mut conn = pool_clone.get().map_err(|_| AppError::InternalError)?;
+        
+        let mut query = matches_schema::table.into_boxed();
+        
+        // Apply filters if provided
+        if let Some(league_id) = league_id {
+            query = query.filter(matches_schema::league_id.eq(league_id));
+        }
+        
+        if let Some(status) = status {
+            query = query.filter(matches_schema::status.eq(status));
+        }
+        
+        query.load::<Match>(&mut conn)
+            .map_err(|_| AppError::InternalError)
+    })
+    .await
+    .map_err(|e| {
+        eprintln!("Error fetching matches: {:?}", e);
+        AppError::InternalError
+    })?;
+    
+    // Now matches_result is a Result<Vec<Match>, AppError>
+    // We need to unwrap it to get Vec<Match>
+    let matches = matches_result?;
+    let count = matches.len();
     
     Ok(HttpResponse::Ok().json(serde_json::json!({
-        "matches": matches_vec,
-        "count": matches_vec.len()
+        "matches": matches,
+        "count": count
     })))
 }
 
@@ -386,6 +414,55 @@ pub async fn get_player_pending_matches(
     })))
 }
 
+#[derive(Deserialize)]
+pub struct LeagueMatchesBody {
+    pub status: Option<Vec<String>>,
+}
+
+pub async fn get_league_matches(
+    pool: web::Data<DbPool>,
+    league_id: web::Path<String>,
+    body: Option<web::Json<LeagueMatchesBody>>,
+) -> Result<impl Responder, AppError> {
+    let pool_clone = pool.clone();
+    let league_id = league_id.into_inner();
+    let statuses = body.map(|b| b.status.clone()).unwrap_or(None);
+    
+    // Use web::block to run the database query in a blocking thread
+    let matches_result = web::block(move || -> Result<Vec<Match>, AppError> {
+        let mut conn = pool_clone.get().map_err(|_| AppError::InternalError)?;
+        
+        let mut query = matches_schema::table
+            .filter(matches_schema::league_id.eq(league_id))
+            .into_boxed();
+        
+        // Apply status filter if provided
+        if let Some(statuses) = statuses {
+            if !statuses.is_empty() {
+                query = query.filter(matches_schema::status.eq_any(statuses));
+            }
+        }
+        
+        query.load::<Match>(&mut conn)
+            .map_err(|_| AppError::InternalError)
+    })
+    .await
+    .map_err(|e| {
+        eprintln!("Error fetching league matches: {:?}", e);
+        AppError::InternalError
+    })?;
+    
+    // Now matches_result is a Result<Vec<Match>, AppError>
+    // We need to unwrap it to get Vec<Match>
+    let matches = matches_result?;
+    let count = matches.len();
+    
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "matches": matches,
+        "count": count
+    })))
+}
+
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/matches")
@@ -393,6 +470,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
             .route("", web::get().to(get_matches))
             .route("/player/{player_id}", web::get().to(get_player_matches))
             .route("/pending/{player_id}", web::get().to(get_player_pending_matches))
+            .route("/league/{league_id}", web::post().to(get_league_matches))
             .route("/{match_id}/accept", web::post().to(accept_match))
             .route("/{match_id}/reject", web::post().to(reject_match))
     );

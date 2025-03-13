@@ -739,4 +739,213 @@ async fn test_get_player_pending_matches() {
     assert_eq!(matches2.len(), 1);
     let found_match2 = matches2.iter().find(|m| m["id"].as_str() == Some(match_id));
     assert!(found_match2.is_some());
+}
+
+#[actix_rt::test]
+async fn test_get_league_matches() {
+    // Setup test app
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(setup_test_db()))
+            .configure(api::init_routes)
+    ).await;
+
+    // Register a test user
+    let user_name = unique_name("user1");
+    let user_email = unique_email("user1");
+    let user_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/users/register")
+            .set_json(&json!({
+                "name": user_name,
+                "email": user_email,
+                "password": "password123"
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(user_response.status(), StatusCode::OK);
+    let user_body: Value = test::read_body_json(user_response).await;
+    let user_id = user_body["id"].as_str().unwrap();
+
+    // Create a second test user
+    let user2_name = unique_name("user2");
+    let user2_email = unique_email("user2");
+    let user2_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/users/register")
+            .set_json(&json!({
+                "name": user2_name,
+                "email": user2_email,
+                "password": "password123"
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(user2_response.status(), StatusCode::OK);
+    let user2_body: Value = test::read_body_json(user2_response).await;
+    let user2_id = user2_body["id"].as_str().unwrap();
+
+    // Create a test league
+    let league_name = unique_name("league");
+    let league_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/leagues")
+            .set_json(&json!({
+                "name": league_name,
+                "description": "Test league description",
+                "admin_id": user_id
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(league_response.status(), StatusCode::OK);
+    let league_body: Value = test::read_body_json(league_response).await;
+    let league_id = league_body["id"].as_str().unwrap();
+
+    // Create a pending match
+    let pending_match_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/matches")
+            .set_json(&json!({
+                "match_type": "Singles",
+                "player1_id": user_id,
+                "player2_id": user2_id,
+                "league_id": league_id,
+                "datetime": "2023-05-15T14:00:00",
+                "location": "Tennis Court 1",
+                "status": "Pending",
+                "notes": "Test pending match"
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(pending_match_response.status(), StatusCode::OK);
+    let pending_match_body: Value = test::read_body_json(pending_match_response).await;
+    let pending_match_id = pending_match_body["id"].as_str().unwrap();
+
+    // Create a scheduled match
+    let scheduled_match_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/matches")
+            .set_json(&json!({
+                "match_type": "Singles",
+                "player1_id": user_id,
+                "player2_id": user2_id,
+                "league_id": league_id,
+                "datetime": "2023-05-16T14:00:00",
+                "location": "Tennis Court 2",
+                "status": "Scheduled",
+                "notes": "Test scheduled match"
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(scheduled_match_response.status(), StatusCode::OK);
+    let scheduled_match_body: Value = test::read_body_json(scheduled_match_response).await;
+    let scheduled_match_id = scheduled_match_body["id"].as_str().unwrap();
+
+    // Create a completed match
+    let completed_match_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/api/matches")
+            .set_json(&json!({
+                "match_type": "Singles",
+                "player1_id": user_id,
+                "player2_id": user2_id,
+                "league_id": league_id,
+                "datetime": "2023-05-14T14:00:00",
+                "location": "Tennis Court 3",
+                "status": "Completed",
+                "notes": "Test completed match"
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(completed_match_response.status(), StatusCode::OK);
+    let completed_match_body: Value = test::read_body_json(completed_match_response).await;
+    let completed_match_id = completed_match_body["id"].as_str().unwrap();
+
+    // Get all matches for the league
+    let league_matches_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri(&format!("/api/matches/league/{}", league_id))
+            .set_json(&json!({}))
+            .to_request()
+    ).await;
+    assert_eq!(league_matches_response.status(), StatusCode::OK);
+    let league_matches_body: Value = test::read_body_json(league_matches_response).await;
+    
+    // Verify response structure and content
+    assert!(league_matches_body.is_object());
+    assert!(league_matches_body.get("matches").is_some());
+    assert!(league_matches_body.get("count").is_some());
+    
+    // Verify that all three matches are included in the response
+    let matches = league_matches_body["matches"].as_array().unwrap();
+    assert_eq!(matches.len(), 3);
+    
+    // Get only pending matches for the league
+    let pending_matches_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri(&format!("/api/matches/league/{}", league_id))
+            .set_json(&json!({
+                "status": ["Pending"]
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(pending_matches_response.status(), StatusCode::OK);
+    let pending_matches_body: Value = test::read_body_json(pending_matches_response).await;
+    
+    // Verify that only the pending match is included in the response
+    let pending_matches = pending_matches_body["matches"].as_array().unwrap();
+    assert_eq!(pending_matches.len(), 1);
+    assert_eq!(pending_matches[0]["id"].as_str(), Some(pending_match_id));
+    assert_eq!(pending_matches[0]["status"].as_str(), Some("Pending"));
+    
+    // Get only scheduled matches for the league
+    let scheduled_matches_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri(&format!("/api/matches/league/{}", league_id))
+            .set_json(&json!({
+                "status": ["Scheduled"]
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(scheduled_matches_response.status(), StatusCode::OK);
+    let scheduled_matches_body: Value = test::read_body_json(scheduled_matches_response).await;
+    
+    // Verify that only the scheduled match is included in the response
+    let scheduled_matches = scheduled_matches_body["matches"].as_array().unwrap();
+    assert_eq!(scheduled_matches.len(), 1);
+    assert_eq!(scheduled_matches[0]["id"].as_str(), Some(scheduled_match_id));
+    assert_eq!(scheduled_matches[0]["status"].as_str(), Some("Scheduled"));
+    
+    // Get both pending and scheduled matches for the league
+    let pending_scheduled_matches_response = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri(&format!("/api/matches/league/{}", league_id))
+            .set_json(&json!({
+                "status": ["Pending", "Scheduled"]
+            }))
+            .to_request()
+    ).await;
+    assert_eq!(pending_scheduled_matches_response.status(), StatusCode::OK);
+    let pending_scheduled_matches_body: Value = test::read_body_json(pending_scheduled_matches_response).await;
+    
+    // Verify that both pending and scheduled matches are included in the response
+    let pending_scheduled_matches = pending_scheduled_matches_body["matches"].as_array().unwrap();
+    assert_eq!(pending_scheduled_matches.len(), 2);
+    
+    // Verify that the matches have the correct statuses
+    let statuses: Vec<&str> = pending_scheduled_matches.iter()
+        .map(|m| m["status"].as_str().unwrap())
+        .collect();
+    assert!(statuses.contains(&"Pending"));
+    assert!(statuses.contains(&"Scheduled"));
+    assert!(!statuses.contains(&"Completed"));
 } 

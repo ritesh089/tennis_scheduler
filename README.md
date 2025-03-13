@@ -181,6 +181,49 @@ cargo test test_login
 - **Error Responses**:
   - 500 Internal Server Error: If there's an issue with the database connection or query
 
+#### Get League Matches
+- **URL**: `/api/matches/league/{league_id}`
+- **Method**: `POST`
+- **Description**: Get all matches for a specific league with optional status filtering
+- **URL Parameters**:
+  - `league_id`: ID of the league to get matches for
+- **Request Body** (optional):
+  ```json
+  {
+    "status": ["Pending", "Scheduled"] // Optional: Filter by multiple match statuses
+  }
+  ```
+- **Response**: 
+  - Status: 200 OK
+  - Body: 
+    ```json
+    {
+      "matches": [
+        {
+          "id": 1,
+          "match_type": "Singles",
+          "player1_id": "1",
+          "player2_id": "2",
+          "league_id": "1",
+          "team1_player1_id": null,
+          "team1_player2_id": null,
+          "team2_player1_id": null,
+          "team2_player2_id": null,
+          "datetime": "2023-05-15T14:00:00",
+          "location": "Tennis Court 1",
+          "score": null,
+          "winner_id": null,
+          "status": "Pending",
+          "notes": "Match request",
+          "created_at": "2023-05-15T10:00:00"
+        }
+      ],
+      "count": 1
+    }
+    ```
+- **Error Responses**:
+  - 500 Internal Server Error: If there's an issue with the database connection or query
+
 #### Accept Match
 - **URL**: `/api/matches/{match_id}/accept`
 - **Method**: `POST`
